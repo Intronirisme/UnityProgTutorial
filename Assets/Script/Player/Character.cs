@@ -37,13 +37,13 @@ public class Character : MonoBehaviour
     private Vector3 _playerMove; //input converti en déplacement
     private Vector3 _physicMove; //déplacements causés par la physique
 
-    private Vector3 _acceleration;
+    //private Vector3 _acceleration;
     private Vector3 _velocity;
 
     //booleen ayant pour but d'éviter l'input bouncing
     private bool _iInteracting = false;
     private bool _iJumping = false;
-    private float _remainingJump = 0.0f;
+    //private float _remainingJump = 0.0f;
 
 
     //Burn after reading
