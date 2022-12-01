@@ -46,9 +46,6 @@ public class Character : MonoBehaviour
     //private float _remainingJump = 0.0f;
 
 
-    //Burn after reading
-    private float _startTime;
-
     // Start is called before the first frame update
     void Start()
     {
@@ -62,9 +59,6 @@ public class Character : MonoBehaviour
         //verrouillage et masquage du curseur de la souris
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
-
-        //delete me
-        _startTime = Time.realtimeSinceStartup;
     }
 
     // Update is called once per frame
@@ -73,7 +67,7 @@ public class Character : MonoBehaviour
         float damping = _controls.isGrounded ? GroundDamping : AirDamping;
 
         GetPlayerMove();
-        //UpdateCamera();
+        UpdateCamera();
         GetPhysicMove();
 
         Vector3 frameMovements = _playerMove + _physicMove;
@@ -86,6 +80,7 @@ public class Character : MonoBehaviour
     {
         float moveSpeed = _controls.isGrounded ? Speed : Speed * AirControl;
         //transforme l'input dans le repère du joueur
+        Debug.Log(_cam_root.transform.rotation.y);
         Vector2 playerSpaceInput = _moveInput.Rotate(_cam_root.transform.rotation.y);
 
         _playerMove = new Vector3
@@ -109,21 +104,15 @@ public class Character : MonoBehaviour
             //Si je touche le sol je ne vais pas vers le bas
             _velocity.y = Mathf.Clamp(_velocity.y, 0.0f, MaxFallingSpeed);
         }
-        float elapsed = Time.realtimeSinceStartup - _startTime;
-        //Debug.Log(elapsed + " s Speed = " + _velocity.magnitude);
         _physicMove = _velocity * Time.deltaTime;
     }
 
     private void UpdateCamera()
     {
-        // baseRotation = new Quaternion.Euler
-        // (
-        //     _cam_root.transform.rotation.x,
-        //     _cam_root.transform.rotation.y,
-        //     _cam_root.transform.rotation.z
-        // );
-
-        //baseRotation 
+        Quaternion baseRotation = _cam_root.transform.rotation;
+        Quaternion frameRotation = Quaternion.Euler(0, TurnRate * Time.deltaTime * _lookInput.x, 0);
+        
+        _cam_root.transform.rotation = baseRotation * frameRotation;
     }
 
     public void OnJump(InputAction.CallbackContext value)
