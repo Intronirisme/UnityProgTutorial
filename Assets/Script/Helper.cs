@@ -35,4 +35,40 @@ public static class ExtensionMethods
         v.y = (sin * tx) + (cos * ty);
         return v;
     }
+
+    public static float ClampNegPos(this float value, float min, float max)
+    {
+        float result;
+        // get relative range +/-
+        float relRange = (max - min) / 2f;
+        // calculate offset
+        float offset = max - relRange;
+        result = ((value + 540) % 360) - 180 - offset;
+        if (Mathf.Abs(result) > relRange)
+        {
+            result = relRange * Mathf.Sign(result) + offset;
+        }
+        return result;
+    }
+
+    public static float AngleBetweenVector(this Vector3 A, Vector3 B)
+    {
+        float result = Mathf.Acos(Vector3.Dot(A.normalized, B.normalized));
+        return result * Mathf.Rad2Deg;
+    }
+
+    public static Quaternion RotationTo(this Quaternion from, Quaternion to)
+    {
+        return Quaternion.Inverse(from) * to;
+    }
+
+    public static Quaternion ApplyLocalRotation(this Quaternion from, Quaternion toApply)
+    {
+        return toApply * from;
+    }
+
+    public static Quaternion ApplyGlobalRotation(this Quaternion from, Quaternion toApply)
+    {
+        return from * toApply;
+    }
 }

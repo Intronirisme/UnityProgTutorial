@@ -5,12 +5,14 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(CharacterController))]
+[RequireComponent(typeof(GravityReceiver))]
 public class Character : MonoBehaviour
 {
     [Header("Walking")]
     public float Speed = 5f;
     public float TurnRate = .5f;
     public float LookupRate = .5f;
+    public float LookUpLimit = 80.0f;
     public float GroundDamping = 2f;
 
     [Header("Jumping")]
@@ -23,10 +25,14 @@ public class Character : MonoBehaviour
     public float AirControl = .3f;
     public float AirDamping = .5f;
 
+    [Header("Ground detection")]
+    public Vector2 GroundDetectionOffset = new Vector2(0.0f, 0.1f);
+
 
     //references vers les autres composants
     private CharacterController _controls;
     private GameObject _body;
+    private Material _body_mat;
     private CapsuleCollider _caps;
     private GameObject _cam_root;
     private GameObject _cam;
@@ -45,6 +51,7 @@ public class Character : MonoBehaviour
     private bool _iJumping = false;
     //private float _remainingJump = 0.0f;
 
+    private bool _iGrounded = false;
 
     // Start is called before the first frame update
     void Start()
@@ -52,6 +59,7 @@ public class Character : MonoBehaviour
         //assignations des références vers nos autres composants
         _controls = gameObject.GetComponent<CharacterController>();
         _body = gameObject.FindInChildren("Body");
+        _body_mat = _body.GetComponent<Renderer>().material;
         _caps = _body.GetComponent<CapsuleCollider>();
         _cam_root = gameObject.FindInChildren("CameraRoot");
         _cam = _cam_root.FindInChildren("Camera");
@@ -64,7 +72,9 @@ public class Character : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        float damping = _controls.isGrounded ? GroundDamping : AirDamping;
+        TestGround();
+        _body_mat.SetColor("_Color", _iGrounded ? Color.white : Color.red);
+        float damping = _iGrounded ? GroundDamping : AirDamping;
 
         GetPlayerMove();
         UpdateCamera();
@@ -78,10 +88,9 @@ public class Character : MonoBehaviour
 
     private void GetPlayerMove()
     {
-        float moveSpeed = _controls.isGrounded ? Speed : Speed * AirControl;
+        float moveSpeed = _iGrounded ? Speed : Speed * AirControl;
         //transforme l'input dans le repère du joueur
-        Debug.Log(_cam_root.transform.rotation.y);
-        Vector2 playerSpaceInput = _moveInput.Rotate(_cam_root.transform.rotation.y);
+        Vector2 playerSpaceInput = _moveInput.Rotate(-_cam_root.transform.rotation.eulerAngles.y);
 
         _playerMove = new Vector3
         (
@@ -89,19 +98,29 @@ public class Character : MonoBehaviour
             0,
             playerSpaceInput.y * moveSpeed * Time.deltaTime
         );
+
+        //aligne le corps dans la direction du movement
+        Vector3 XZvelocity = new Vector3(_controls.velocity.x, 0, _controls.velocity.z).normalized;
+        //RotateToward prend en paramètre un interval de temps, cette fonction étant appelée à chaque frames,
+        //il est de fait possible t'interpoler l'alignement du joueur au cours du temps (effet smooth)
+        _body.transform.rotation = Quaternion.RotateTowards(
+            _body.transform.rotation,
+            Quaternion.LookRotation(XZvelocity),
+            TurnRate * Time.deltaTime
+        );
     }
 
     private void GetPhysicMove()
     {
         if(!_controls.isGrounded)
         {
-            //ma vélocité augmente
+            // Ma vélocité augmente
             _velocity.y -= GravityAcceleration * Time.deltaTime;
             _velocity.y = Mathf.Clamp(_velocity.y, -MaxFallingSpeed, MaxFallingSpeed);
         }
         else
         {
-            //Si je touche le sol je ne vais pas vers le bas
+            // Si je touche le sol je ne vais pas vers le bas
             _velocity.y = Mathf.Clamp(_velocity.y, 0.0f, MaxFallingSpeed);
         }
         _physicMove = _velocity * Time.deltaTime;
@@ -109,28 +128,32 @@ public class Character : MonoBehaviour
 
     private void UpdateCamera()
     {
-        Quaternion baseRotation = _cam_root.transform.rotation;
-        Quaternion frameRotation = Quaternion.Euler(0, TurnRate * Time.deltaTime * _lookInput.x, 0);
-        
-        _cam_root.transform.rotation = baseRotation * frameRotation;
+        Vector3 camRotation = _cam_root.transform.rotation.eulerAngles;
+        camRotation += new Vector3
+        (
+            LookupRate * Time.deltaTime * _lookInput.y,
+            TurnRate * Time.deltaTime * _lookInput.x,
+            0
+        );
+        camRotation.x = camRotation.x.ClampNegPos(-LookUpLimit, LookUpLimit);        
+        _cam_root.transform.rotation = Quaternion.Euler(camRotation);
     }
 
     public void OnJump(InputAction.CallbackContext value)
     {
         //lire des input binaire (pressé / relâché) en évitant le rebond
 
-        if(value.ReadValueAsButton() && !_iJumping && _controls.isGrounded)
+        if(value.ReadValueAsButton() && !_iJumping && _iGrounded)
         {
             _iJumping = true;
-            //_remainingJump = JumpDuration;
             _velocity.y += JumpSpeed;
             
-            Debug.Log("Jump");
+            //Debug.Log("Jump");
         }
         else if(!value.ReadValueAsButton() && _iJumping)
         {
             _iJumping = false;
-            Debug.Log("No Jump");
+            //Debug.Log("No Jump");
         }
     }
 
@@ -154,5 +177,18 @@ public class Character : MonoBehaviour
     public void OnLook(InputAction.CallbackContext value)
     {
         _lookInput = value.ReadValue<Vector2>();
+    }
+
+    private void TestGround()
+    {
+        RaycastHit hit;
+        float halfHeight = (_controls.height / 2) + GroundDetectionOffset.y;
+        float radius = _controls.radius + GroundDetectionOffset.x;
+        if(Physics.SphereCast(transform.position, radius, Vector3.down, out hit, halfHeight))
+        {
+            _iGrounded = hit.normal.AngleBetweenVector(Vector3.up) <= _controls.slopeLimit;
+        } else {
+            _iGrounded = false;
+        }
     }
 }
