@@ -4,7 +4,7 @@ using UnityEngine;
 
 using UnityEngine.InputSystem;
 
-[RequireComponent(typeof(CharacterController))]
+//[RequireComponent(typeof(CharacterController))]
 [RequireComponent(typeof(GravityReceiver))]
 public class Character : MonoBehaviour
 {
@@ -84,6 +84,10 @@ public class Character : MonoBehaviour
         //frameMovements -= frameMovements * damping;
         // applique tout les movements
         _controls.Move(frameMovements);
+    }
+
+    private void FixedUpdate() {
+        TestGround();
     }
 
     private void GetPlayerMove()
