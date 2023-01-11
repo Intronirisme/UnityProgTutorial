@@ -37,6 +37,5 @@ public class Camera : MonoBehaviour
     public void OnLook(InputAction.CallbackContext value)
     {
         _lookInput = value.ReadValue<Vector2>();
-        Debug.Log(_lookInput);
     }
 }
