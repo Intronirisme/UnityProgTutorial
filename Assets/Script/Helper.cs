@@ -71,4 +71,23 @@ public static class ExtensionMethods
     {
         return from * toApply;
     }
+
+
+}
+
+//custom struct
+public struct CameraControls
+{
+    public CameraControls(float Ho, float Az, float Dist)
+    {
+        Horizon = Ho;
+        Azimuth = Az;
+        Distance = Dist;
+    }
+
+    public float Horizon { get; set; }
+    public float Azimuth { get; set; }
+    public float Distance { get; set; }
+
+    public override string ToString() => $"(Yaw: {Horizon} | Pitch: {Azimuth} | Distance: {Distance})";
 }

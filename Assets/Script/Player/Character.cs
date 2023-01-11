@@ -4,16 +4,14 @@ using UnityEngine;
 
 using UnityEngine.InputSystem;
 
-//[RequireComponent(typeof(CharacterController))]
-[RequireComponent(typeof(GravityReceiver))]
+[RequireComponent(typeof(CharacterController))]
+//[RequireComponent(typeof(GravityReceiver))]
 public class Character : MonoBehaviour
 {
     [Header("Walking")]
     public float Speed = 5f;
-    public float TurnRate = .5f;
-    public float LookupRate = .5f;
-    public float LookUpLimit = 80.0f;
     public float GroundDamping = 2f;
+    public float TurnRate = 3f;
 
     [Header("Jumping")]
     public float JumpSpeed = 3f;
@@ -39,7 +37,6 @@ public class Character : MonoBehaviour
 
     //inputs & déplacements
     private Vector2 _moveInput; //récupère l'input du joueur
-    private Vector2 _lookInput;
     private Vector3 _playerMove; //input converti en déplacement
     private Vector3 _physicMove; //déplacements causés par la physique
 
@@ -77,7 +74,6 @@ public class Character : MonoBehaviour
         float damping = _iGrounded ? GroundDamping : AirDamping;
 
         GetPlayerMove();
-        UpdateCamera();
         GetPhysicMove();
 
         Vector3 frameMovements = _playerMove + _physicMove;
@@ -103,15 +99,18 @@ public class Character : MonoBehaviour
             playerSpaceInput.y * moveSpeed * Time.deltaTime
         );
 
-        //aligne le corps dans la direction du movement
+            //aligne le corps dans la direction du movement
         Vector3 XZvelocity = new Vector3(_controls.velocity.x, 0, _controls.velocity.z).normalized;
-        //RotateToward prend en paramètre un interval de temps, cette fonction étant appelée à chaque frames,
-        //il est de fait possible t'interpoler l'alignement du joueur au cours du temps (effet smooth)
-        _body.transform.rotation = Quaternion.RotateTowards(
-            _body.transform.rotation,
-            Quaternion.LookRotation(XZvelocity),
-            TurnRate * Time.deltaTime
-        );
+        if(XZvelocity.magnitude > 0.01f)
+        {
+            //RotateToward prend en paramètre un interval de temps, cette fonction étant appelée à chaque frames,
+            //il est de fait possible t'interpoler l'alignement du joueur au cours du temps (effet smooth)
+            _body.transform.rotation = Quaternion.RotateTowards(
+                _body.transform.rotation,
+                Quaternion.LookRotation(XZvelocity),
+                TurnRate * Time.deltaTime
+            );
+        }
     }
 
     private void GetPhysicMove()
@@ -128,19 +127,6 @@ public class Character : MonoBehaviour
             _velocity.y = Mathf.Clamp(_velocity.y, 0.0f, MaxFallingSpeed);
         }
         _physicMove = _velocity * Time.deltaTime;
-    }
-
-    private void UpdateCamera()
-    {
-        Vector3 camRotation = _cam_root.transform.rotation.eulerAngles;
-        camRotation += new Vector3
-        (
-            LookupRate * Time.deltaTime * _lookInput.y,
-            TurnRate * Time.deltaTime * _lookInput.x,
-            0
-        );
-        camRotation.x = camRotation.x.ClampNegPos(-LookUpLimit, LookUpLimit);        
-        _cam_root.transform.rotation = Quaternion.Euler(camRotation);
     }
 
     public void OnJump(InputAction.CallbackContext value)
@@ -176,11 +162,6 @@ public class Character : MonoBehaviour
     {
         //value.ReadValue<Vector2>() lire un vecteur
         _moveInput = value.ReadValue<Vector2>();
-    }
-
-    public void OnLook(InputAction.CallbackContext value)
-    {
-        _lookInput = value.ReadValue<Vector2>();
     }
 
     private void TestGround()
